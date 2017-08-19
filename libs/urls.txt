@@ -1,0 +1,5 @@
+https://raw.githubusercontent.com/pdxmeshnet/openwrt-packages/master/lang/lua-bit32/Makefile
+https://github.com/keplerproject/lua-compat-5.3/tree/master/compat53 - copy this folder to /usr/share/lua/
+https://github.com/Neopallium/lualogging/downloads - copy src folder to project root
+# https://luarocks.org/modules/gaspard/yaml/1.1.2-1
+https://github.com/acd/lua-yaml
