@@ -1,0 +1,56 @@
+db:
+    user: "ssn"
+    pass: "123456"
+    db: "ssndb"
+    host: "localhost"
+    port: 27017
+
+app:
+    name: "Test application"
+    proxy_server: "localhost" # address of the proxy server to MC
+# TCP settings:
+    TCPBufferSize: 10000
+    MQTT_PORT: 1883            # MQTT broker TCP port 
+    MQTT_HOST: "192.168.1.5"   # host name for client connections
+    MQTT_BROKER_USER: "mosquitto"
+    MQTT_BROKER_PASS: "test"
+    MQTT_BROKER_CLIENT_ID: "lua_client_test1"
+
+    LOG_TO_MQTT: 1 # if 1 than send all logging info into /ssn/acc/x/log/ssnmqtt
+
+# serial port settings:
+    Serialbaudrate: 57600
+    SerialPort: '/dev/ttyUSB1'
+    SerialBufferSize: 10000
+    Serialrtscts: False
+    SerialFlowHW: True
+    SerialTimeout: 1           #set a timeout value, None for waiting forever
+# hardware settings
+    #LED_BLINK: "gl_ar150:lan"
+    LED_BLINK: ""
+    #RTS_GPIO: "1"
+    RTS_GPIO: ""
+    RTS_ACTIVE: "0"
+    RTS_PASSIVE: "1"
+
+#telegram settings
+    Use_Tlg_Bot: 0  # 1 - Telegram bot activate; 0 - Telegram bot off
+    TEL_TOKEN: ""
+    SSN_GRP_ID: ""
+
+# routes and interfaces to objects:
+ssn:
+    proxy_obj: 3   # Proxy object
+    tcp_if: [3,4]
+    serial_if: [1,2,10]
+    tlg_if: 5      # Telegram object - depricated
+    tlg_obj: 5     # Telegram object
+    tlg_dev: 10002 # Telegram device
+
+    ACCOUNT: 2
+
+    SSNTimeout: 5           # set a timeout value, None for waiting forever
+    SSNsendMinTimeout: 0.03    # min timeout before sending to serial line (sec)
+
+
+
