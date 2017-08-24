@@ -1,0 +1,39 @@
+#!/bin/ash /etc/rc.common
+# SSN MQTT proxy service
+# Copyright (C) 2017 ernold.net
+ 
+START=92
+STOP=16
+
+APP='lua /overlay/ssn-ctrl/ssnCtrl.lua script -l INFO'
+workdir=/overlay/ssn-ctrl
+  
+start_service() {
+	sleep 2
+        echo starting SSN Control service  ..
+	cd $workdir
+# 	$APP 1>/var/log/ssnctrl_out.log 2>/var/log/ssnctrl_err.log &
+ 	$APP 1>/dev/null 2>/dev/null &
+
+        echo started SSN Control service
+}
+
+start() {
+	start_service
+}                 
+ 
+stop() {          
+        echo stopping SSN MQTT proxy service ..
+	killall  $APP
+	echo "SSN MQTT proxy service killed."
+}
+
+boot() {
+	start_service
+}
+
+restart() {
+	stop
+	sleep 1
+	start
+}
