@@ -19,8 +19,14 @@ local function read_file(path)
     return content
 end
 
-function loadSSNConf()
-  local fileConfName = "ssn_conf.yaml"
+function loadSSNConf(file_name)
+  local fileConfName
+  if (file_name) then
+    fileConfName = file_name
+  else
+    fileConfName = "ssn_conf.yaml"
+  end
+  
   local fileConfigData = read_file(fileConfName)
   if not fileConfigData then
     logger:error(string.format("can't open configuration file '%s'\n", fileConfName))

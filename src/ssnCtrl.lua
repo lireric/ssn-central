@@ -1,12 +1,7 @@
---require "ssnPDU"
 require "logging.console"
 require "ssnconf"
---require "ssnmqtt"
 local yaml = require('yaml')
 socket = require("socket")
-
---local outErr = io.stderr
---local out = io.stdout
 
 -- global variables:
 log_level = logging.DEBUG
@@ -14,7 +9,7 @@ loggerGlobal = logging.console()
 ssnmqttClient = nil
 ssnConf = nil
 SerProxy1 = nil
-
+con = nil -- database connection
 
 -- local chank variables:
 local s
@@ -193,6 +188,10 @@ local function processBuffer(strBuf)
         end
       end
     end
+    -- reset tail if it size grow so much:
+    if (#tail > ssnConf.app.SerialBufferSize) then
+      tail = ""
+    end
   end
 end
 
@@ -201,8 +200,9 @@ local function receiveSerialMsg (co)
   local status, value, isValidData = coroutine.resume(co)
 --  logger:debug("get receiveSerialMsg, status: %s", tostring(status))
   if isValidData then 
-    logger:debug("receiveSerialMsg...")
-    processBuffer(value)
+    logger:debug("receiveSerialMsg, send to row_data topic...")
+    ssnmqttClient.client:publish("/ssn/acc/"..tostring(ssnmqttClient.account).."/raw_data",value, 0, false)
+    --processBuffer(value)
   end
   return true -- to do
 end
@@ -295,18 +295,78 @@ local function mainLoop (co)
     ssnmqttClient.client:loop(0,1)
     
 --    os.execute("sleep 0.2")
+--    sleep(0.01)
+  end
+end
+
+-- ********************************************** Database logger functions:
+-- Callback function special for database logger:
+local function ssnOnConnectDB(success, rc, str)
+  logger:info("connected (ssnOnConnectDB): %s, %d, %s", tostring(success), rc, str)
+  if not success then
+    logger:error("Failed to connect: %d : %s\n", rc, str)
+    return
+  end
+  ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/obj/+/device/+/+/out_json", 0)
+end
+
+local function ssnOnMessageDB(mid, topic, payload)
+  logger:debug("MQTT message. Topic=%s : %s", topic, payload)
+  local acc
+  local rootToken
+  local subTokensArray
+  acc, rootToken, subTokensArray = parseTopic(topic)
+  -- check for correct account
+  if not acc then
+    logger:debug ("Wrong topic [%s]. Skipping", topic)
+    return
+  end
+  if (acc == ssnConf.ssn.ACCOUNT) then
+    logger:debug ("Account=%d, rootToken = %s", acc, rootToken)
+    if (rootToken == "obj") then
+      if (subTokensArray) then
+        local obj = tonumber(subTokensArray[1], 10)
+        logger:debug("ObjDataProcess: obj=%d", obj)
+        local teleData = yaml.load(payload)
+        logger:debug("JsonTeledataMsg: = %s", yaml.dump(teleData))
+        
+--  td_account smallint, -- Account
+--  td_object smallint, -- Object
+--  td_device smallint NOT NULL, -- Device
+--  td_channel smallint NOT NULL DEFAULT 0, -- Channel of device (default=0)
+--  td_dev_ts integer, -- Timestamp from device (unix format)
+--  td_store_ts integer NOT NULL, -- Timestamp of storing in DB (unix format)
+--  td_dev_value integer NOT NULL, -- Value of device
+--  td_action smallint NOT NULL DEFAULT 0, -- Action number if value of device is changed by action or 0 if value changed by external factors.
+        
+        
+        if (con) then
+          local res = assert (con:execute(string.format([[
+    INSERT INTO ssn_teledata (td_account, td_object, td_device, td_channel, td_dev_ts, td_store_ts, td_dev_value, td_action)
+    VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d')]], acc, obj, teleData.d, teleData.c, teleData.t, teleData.pub_ts, teleData.v, teleData.a)
+          ))
+        end
+      end
+    end
+  else
+    logger:debug ("Wrong account [%d]. Skipping", acc)
+  end
+end
+
+local function mainLoopDB ()
+  logger:debug("Start mainLoopDB")
+  while true do
+    ssnmqttClient.client:loop(0,1)
     sleep(0.2)
   end
 end
 
+-- **********************************************
 
 local function main()
 
-  ssnConf = loadSSNConf()
-
-  logger:debug(string.format("Application name: %s", ssnConf.app.name))
   -- process command line arguments:
-  local opts = getopt( arg, "l" )
+  local opts = getopt( arg, "ldc" )
   if (opts.l) then
     if (opts.l == 'DEBUG') then
       log_level = logging.DEBUG
@@ -318,37 +378,65 @@ local function main()
       log_level = logging.ERROR
     end
   end
+
   loggerGlobal:setLevel (log_level)
+
+  local file_conf_name = "ssn_conf.yaml"
+  if (opts.c) then
+    file_conf_name = opts.c
+  end
+  logger:debug("Using config file: %s", file_conf_name)
+
+  ssnConf = loadSSNConf(file_conf_name)
+  logger:debug("Application name: %s", ssnConf.app.name)
+
   require "ssnPDU"
   require "ssnmqtt"
-  
 
-  --local SerProxy =
-  require('ssnSerialProxy')
-  SerProxy1 = ssnSerialProxy:new(nil, ssnConf.app.SerialPort)
-  SerProxy1:setBaudRate (ssnConf.app.Serialbaudrate)
-  SerProxy1:setLedBlink (ssnConf.app.LED_BLINK)
-  SerProxy1:setUseRTSDTR (ssnConf.app.Serialrtscts)
-  SerProxy1:setSerialFlowHW (ssnConf.app.SerialFlowHW)
+  ssnmqttClient = ssnmqtt:new(nil, ssnConf.ssn.ACCOUNT, ssnConf.app.MQTT_HOST, ssnConf.app.MQTT_PORT, ssnConf.app.MQTT_BROKER_CLIENT_ID)
+  ssnmqttClient.client:login_set(ssnConf.ssn.MQTT_BROKER_USER, ssnConf.ssn.MQTT_BROKER_PASS)
 
-  if SerProxy1:init() then
-    logger:info ("Init Ok. Read loop starting")
-    s = ssnPDU:new()
-    SerProxy1:setCallBack(processBuffer)
-    SerProxy1:setRtsConf (ssnConf.app.RTS_GPIO, ssnConf.app.RTS_ACTIVE, ssnConf.app.RTS_PASSIVE)
-
-    ssnmqttClient = ssnmqtt:new(nil, ssnConf.ssn.ACCOUNT, ssnConf.app.MQTT_HOST, ssnConf.app.MQTT_PORT, ssnConf.app.MQTT_BROKER_CLIENT_ID)
-    ssnmqttClient.client:login_set(ssnConf.ssn.MQTT_BROKER_USER, ssnConf.ssn.MQTT_BROKER_PASS)
-    ssnmqttClient:setCallBackOnConnect (ssnOnConnect)
-    ssnmqttClient:setCallBackOnMessage (ssnOnMessage)
+  -- if argument "-d" then start database logger thread instead serial proxy:
+  if (opts.d) then
+    logger:info ("Database logger starting")
+    ssnmqttClient:setCallBackOnConnect (ssnOnConnectDB)
+    ssnmqttClient:setCallBackOnMessage (ssnOnMessageDB)
     ssnmqttClient:connect()
 
-    --    SerProxy1:readLoop()
-    mainLoop(SerProxy1:readLoop())
-  else
-    logger:error("serial init fail")
-  end
+    -- load driver
+    local driver = require "luasql.postgres"
+    -- create environment object
+    local env = assert (driver.postgres())
+    -- connect to data source
+    --local con = assert (env:connect("ssndb",username[,password[,hostname[,port]]]]))
+    con = assert (env:connect(ssnConf.db.db, ssnConf.db.user, ssnConf.db.pass,ssnConf.db.host, ssnConf.db.port))
 
+
+    mainLoopDB ()
+  else
+    -- start Serial proxy:
+    require('ssnSerialProxy')
+    SerProxy1 = ssnSerialProxy:new(nil, ssnConf.app.SerialPort)
+    SerProxy1:setBaudRate (ssnConf.app.Serialbaudrate)
+    SerProxy1:setLedBlink (ssnConf.app.LED_BLINK)
+    SerProxy1:setUseRTSDTR (ssnConf.app.Serialrtscts)
+    SerProxy1:setSerialFlowHW (ssnConf.app.SerialFlowHW)
+
+    if SerProxy1:init() then
+      logger:info ("Init Ok. Read loop starting")
+      s = ssnPDU:new()
+      SerProxy1:setCallBack(processBuffer)
+      SerProxy1:setRtsConf (ssnConf.app.RTS_GPIO, ssnConf.app.RTS_ACTIVE, ssnConf.app.RTS_PASSIVE)
+
+      ssnmqttClient:setCallBackOnConnect (ssnOnConnect)
+      ssnmqttClient:setCallBackOnMessage (ssnOnMessage)
+      ssnmqttClient:connect()
+
+      mainLoop(SerProxy1:readLoop())
+    else
+      logger:error("serial init fail")
+    end
+  end
 end
 
 

@@ -1,9 +1,9 @@
 db:
     user: "ssn"
     pass: "123456"
-    db: "ssndb"
-    host: "localhost"
-    port: 27017
+    db: "ssn"
+    host: "192.168.1.6"
+    port: 5432
 
 app:
     name: "Test application"
@@ -14,7 +14,7 @@ app:
     MQTT_HOST: "192.168.1.5"   # host name for client connections
     MQTT_BROKER_USER: "mosquitto"
     MQTT_BROKER_PASS: "test"
-    MQTT_BROKER_CLIENT_ID: "lua_client_test1"
+    MQTT_BROKER_CLIENT_ID: "lua_client_test2"
 
     LOG_TO_MQTT: 1 # if 1 than send all logging info into /ssn/acc/x/log/ssnmqtt
 
@@ -47,7 +47,7 @@ ssn:
     tlg_obj: 5     # Telegram object
     tlg_dev: 10002 # Telegram device
 
-    ACCOUNT: 2
+    ACCOUNT: 1
 
     SSNTimeout: 5           # set a timeout value, None for waiting forever
     SSNsendMinTimeout: 0.03    # min timeout before sending to serial line (sec)

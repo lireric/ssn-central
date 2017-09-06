@@ -1,5 +1,6 @@
 rs232 = require("luars232")
 --rs232 = require("rs232") -- https://luarocks.org/modules/moteus/rs232 -- https://github.com/moteus/librs232
+local socket = require("socket")
 
 local logger
 if loggerGlobal then
@@ -198,19 +199,20 @@ end
 
 function ssnSerialProxy:readLoop()
   local read_len = 32 -- maximum 32 bytes
-  local timeout = 200 -- in miliseconds
+  local timeout = 400 -- in milliseconds
   logger:debug("Create readLoop coroutine")
   return coroutine.create(function ()
     while true do
-      self:setRTS(nil)
+--      self:setRTS(nil)
       local buff_all = ""
       local isValidData = nil
       local err
       local data_read
       local size = read_len
+      local t = socket.gettime()*1000
       -- try to get data from serial port. If we receive data, then get it all:
-      while (size == read_len) do
-        self:ledOn() -- flash the led (on)
+      while ((size == read_len) or (socket.gettime()*1000 < (t + timeout))) do
+--        self:ledOn() -- flash the led (on)
         -- read with timeout
         err, data_read, size = self.p:read(read_len, timeout)
 
@@ -225,7 +227,7 @@ function ssnSerialProxy:readLoop()
 
 --        logger:debug(string.format("232-read status: err='%s' *** LEN: %d", tostring(err), size))
       end
-      self:ledOff() -- flash the led (off)
+--      self:ledOff() -- flash the led (off)
 
       coroutine.yield(buff_all, isValidData)
     end

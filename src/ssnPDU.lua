@@ -91,7 +91,7 @@ end
 function ssnPDU:processBuffer(buf)
 
   --  local buf = nil
-  local bufTail = ""
+  local bufTail = "" -- buf
   local nResult = false     -- # success or not result
   local pduPos1
   local pduPos2

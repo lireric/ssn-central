@@ -140,12 +140,11 @@ end
 
 
 function ssnOnConnect(success, rc, str)
-  logger:info("connected: %s, %d, %s", tostring(success), rc, str)
+  logger:info("MQTT connected: %s, %d, %s", tostring(success), rc, str)
   if not success then
     logger:error("Failed to connect: %d : %s\n", rc, str)
     return
   end
-  --local mid = ssnmqttClient.client:subscribe("/ssn/acc/2/obj/10/device/+/+/out", 2)
   ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/raw_data", 0)
   ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/obj/+/commands", 0)
   ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/obj/+/commands/ini", 0)
