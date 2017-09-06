@@ -20,4 +20,4 @@ Module is written in Lua and replaces previous version on Python and C.
 	lua ssnCtrl.lua script -l WARN -c ssn_conf2.yaml -d
 	
 	
-## Configuration parameters are stored in file ssn_conf.yaml
+
