@@ -10,9 +10,14 @@ Module is written in Lua and replaces previous version on Python and C.
 
 # Main execution file: ssnCtrl.lua
 
-Optional parameters - logging level: -l
+### Optional parameters:
+	-l 				set logging level  <DEBUG, INFO, WARN, ERROR>
+	-c <path_to_config_file>	point to configuration file. Default value ssn_conf.yaml in current directory
+	-d 				start in database storing mode
 
 ### Example:
 	lua ssnCtrl.lua script -l INFO
+	lua ssnCtrl.lua script -l WARN -c ssn_conf2.yaml -d
+	
 	
 ## Configuration parameters are stored in file ssn_conf.yaml
