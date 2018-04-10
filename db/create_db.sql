@@ -6,6 +6,11 @@ CREATE DATABASE ssn
        LC_CTYPE = 'C.UTF-8'
        CONNECTION LIMIT = -1;
 
+CREATE SEQUENCE public.ssn_teledata_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+;
 
 -- Table: public.ssn_teledata
 

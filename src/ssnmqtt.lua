@@ -155,7 +155,11 @@ function ssnOnConnect(success, rc, str)
     ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/telegram/in", 0)
     ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/telegram/in/photo", 0)
   end
-    ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/telegram/out", 0)
+  ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/telegram/out", 0)
+
+  if (ssnConf.app.DBLog == 1) then
+    ssnmqttClient.client:subscribe("/ssn/acc/"..tostring(ssnmqttClient.account).."/obj/+/device/+/+/out_json", 0)
+  end
 end
 
 -- ---------------------------------------------------
